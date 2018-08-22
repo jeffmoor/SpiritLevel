@@ -8,6 +8,7 @@
 static boolean			set_gyro_angles;
 
 static int				lcd_loop_counter,
+						iMainLoopCount,
 						angle_pitch_buffer, angle_roll_buffer;
 
 static long				acc_total_vector,
@@ -29,10 +30,11 @@ void setup() {
 	int				gyro_x, gyro_y, gyro_z, temperature;
 	long			acc_x, acc_y, acc_z;
 
+	iMainLoopCount = 1;
 
 	Wire.begin();												//Start I2C as master
 
-	//Serial.begin(57600);										//Use only for debugging
+	Serial.begin(57600);										//Use only for debugging
 
 	pinMode(13, OUTPUT);										//Set output 13 (LED) as output
 
@@ -43,13 +45,13 @@ void setup() {
 	// Init the LCD, write the introduction message for 1.5 seconds, then the cal message
 	lcd.begin(16, 2);											// Set the number of columns and rows for the LCD
 	lcd.setCursor(0, 0);
-	lcd.print("Spirit Level");
+	lcd.print("  Digital Level");
 	lcd.setCursor(0, 1);
-	lcd.print("     V1.0");
+	lcd.print("    Ver. 1.0");
 	delay(1500);
 	lcd.clear();
 	lcd.setCursor(0, 0);
-	lcd.print("Calibrating gyro");
+	lcd.print("Calibrating Gyro");
 	lcd.setCursor(0, 1);
 
 	// Average the gyro levels over GYRO_CAL_ITERATIONS cycles to get the cal value
@@ -76,6 +78,12 @@ void setup() {
 	lcd.setCursor(0, 1);
 	lcd.print("Roll :");
 
+	// Debug print
+	Serial.print("X cal: ");Serial.println(gyro_x_cal);
+	Serial.print("Y cal: ");Serial.println(gyro_y_cal);
+	Serial.print("Z cal: ");Serial.println(gyro_z_cal);
+	Serial.println();
+
 	digitalWrite(13, LOW);										// All done, turn the LED off
 
 	lcd_loop_counter = 1;										// Init the LCD loop counter
@@ -100,6 +108,18 @@ void loop() {
 	gyro_x -= gyro_x_cal;
 	gyro_y -= gyro_y_cal;
 	gyro_z -= gyro_z_cal;
+
+	// Debug print
+	if (iMainLoopCount < 750)
+		iMainLoopCount++;
+	else {
+		iMainLoopCount = 1;
+		Serial.println();
+		Serial.print("X: ");Serial.println(gyro_x);
+		Serial.print("Y: ");Serial.println(gyro_y);
+		Serial.print("Z: ");Serial.println(gyro_z);
+		Serial.println();
+	}
 
 	// Gyro angle calculations  [0.0000611 = 1 / (250Hz / 65.5)]
 	angle_pitch += gyro_x * 0.0000610687;                                // Calculate the traveled pitch angle and add this to the angle_pitch variable
@@ -203,43 +223,53 @@ void write_LCD()
 			lcd.print(abs(angle_pitch_buffer) % 10);      
 			break;
 
-		case 8:									// Buffer the roll angle because it will change and set the LCD cursor to initial position on second line
+		case 8:								// Print degree
+			lcd.print((char)223);
+			break;
+
+		case 9:									// Buffer the roll angle because it will change and set the LCD cursor to initial position on second line
 			angle_roll_buffer = angle_roll_output * 10;
 			lcd.setCursor(6, 1);
 			break;
 
-		case 9:									// Print + or - as appropriate
+		case 10:									// Print + or - as appropriate
 			if (angle_roll_buffer < 0)
 				lcd.print(" - ");
 			else
 				lcd.print(" + ");
 			break;
 
-		case 10:								//Print first number
+		case 11:								//Print first number
 			lcd.print(abs(angle_roll_buffer) / 1000);
 			break;
 
-		case 11:								//Print second number
+		case 12:								//Print second number
 			lcd.print((abs(angle_roll_buffer) / 100) % 10);
 			break;
 
-		case 12:								//Print third number
+		case 13:								//Print third number
 			lcd.print((abs(angle_roll_buffer) / 10) % 10);
 			break;
 
-		case 13:								//Print decimal point
+		case 14:								//Print decimal point
 			lcd.print(".");
 			break;
 
-		case 14:								// Print decimal number
+		case 15:								// Print decimal number
 			lcd.print(abs(angle_roll_buffer) % 10);
-			lcd_loop_counter = 1;
+			break;
+
+		case 16:								// Print decimal number
+			lcd.print((char)223);
+			lcd_loop_counter = 0;
 			break;
 
 		default:
-			lcd_loop_counter = 1;
+			lcd_loop_counter = 0;
 			break;
-		}
+	}
+
+	lcd_loop_counter++;
 }
 
 
