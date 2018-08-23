@@ -28,7 +28,8 @@ LiquidCrystal			lcd(7, 8, 9, 10, 11, 12);		// LiquidCrystal(rs, enable, d4, d5, 
 void setup() {
 
 	int				gyro_x, gyro_y, gyro_z, temperature;
-	long			acc_x, acc_y, acc_z;
+	long			acc_x, acc_y, acc_z,
+					acc_x_cal, acc_y_cal;
 
 
 	gbSetGyroAngles = FALSE;
@@ -61,6 +62,8 @@ void setup() {
 	gyro_x_cal = 0;
 	gyro_y_cal = 0;
 	gyro_z_cal = 0;
+	acc_x_cal = 0;
+	acc_y_cal = 0;
 	for (int cal_int = 0; cal_int < GYRO_CAL_ITERATIONS; cal_int++) {
 		if (cal_int % GYRO_CAL_DOT_PERIOD == 0)
 			lcd.print(".");										// Print a dot on the LCD every 125 readings
@@ -68,11 +71,15 @@ void setup() {
 		gyro_x_cal += gyro_x;
 		gyro_y_cal += gyro_y;
 		gyro_z_cal += gyro_z;
+		acc_x_cal += acc_x;
+		acc_y_cal += acc_y;
 		delay(3);												// Delay 3us to simulate the 250Hz program loop
 	}
 	gyro_x_cal /= GYRO_CAL_ITERATIONS;
 	gyro_y_cal /= GYRO_CAL_ITERATIONS;
 	gyro_z_cal /= GYRO_CAL_ITERATIONS;
+	acc_x_cal /= GYRO_CAL_ITERATIONS;
+	acc_y_cal /= GYRO_CAL_ITERATIONS;
 
 	// Clear the LCD and display the Pitch and Roll tags
 	lcd.clear();
@@ -82,9 +89,11 @@ void setup() {
 	lcd.print("Roll :");
 
 	// Debug print
-	Serial.print("X cal: ");Serial.println(gyro_x_cal);
-	Serial.print("Y cal: ");Serial.println(gyro_y_cal);
-	Serial.print("Z cal: ");Serial.println(gyro_z_cal);
+	Serial.print("G X cal: ");Serial.println(gyro_x_cal);
+	Serial.print("G Y cal: ");Serial.println(gyro_y_cal);
+	Serial.print("G Z cal: ");Serial.println(gyro_z_cal);
+	Serial.print("A X cal: ");Serial.println(acc_x_cal);
+	Serial.print("A Y cal: ");Serial.println(acc_y_cal);
 	Serial.println();
 
 	digitalWrite(13, LOW);										// All done, turn the LED off
@@ -113,7 +122,7 @@ void loop() {
 	gyro_z -= gyro_z_cal;
 
 	// Debug print
-	if (iMainLoopCount < 750)
+	/*if (iMainLoopCount < 750)
 		iMainLoopCount++;
 	else {
 		iMainLoopCount = 1;
@@ -124,7 +133,7 @@ void loop() {
 		Serial.print("AP: ");Serial.println(acc_x);
 		Serial.print("AR: ");Serial.println(acc_y);
 		Serial.println();
-	}
+	}*/
 
 	// Gyro angle calculations  [0.0000611 = 1 / (250Hz / 65.5)]
 	angle_pitch += gyro_x * 0.0000610687;                                // Calculate the traveled pitch angle and add this to the angle_pitch variable
@@ -143,12 +152,14 @@ void loop() {
 	//
 	// Place the MPU-6050 spirit level on a level surface and note the values in the following two lines for calibration
 	//
-	angle_pitch_acc -= 0.0;                                             // Accelerometer calibration value for pitch
-	angle_roll_acc -= 0.0;                                              // Accelerometer calibration value for roll
+	angle_pitch_acc -= ACC_CAL_X;                                             // Accelerometer calibration value for pitch
+	angle_roll_acc -= ACC_CAL_Y;                                              // Accelerometer calibration value for roll
 
 	if (gbSetGyroAngles) {												// If the IMU is already started
-		angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;  // Correct the drift of the gyro pitch angle with the accelerometer pitch angle
-		angle_roll = angle_roll * 0.9996 + angle_roll_acc * 0.0004;     // Correct the drift of the gyro roll angle with the accelerometer roll angle
+//		angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;  // Correct the drift of the gyro pitch angle with the accelerometer pitch angle
+//		angle_roll = angle_roll * 0.9996 + angle_roll_acc * 0.0004;     // Correct the drift of the gyro roll angle with the accelerometer roll angle
+		angle_pitch = angle_pitch * 0.996 + angle_pitch_acc * 0.004;  // Correct the drift of the gyro pitch angle with the accelerometer pitch angle
+		angle_roll = angle_roll * 0.996 + angle_roll_acc * 0.004;     // Correct the drift of the gyro roll angle with the accelerometer roll angle
 	}
 	else {                                                              // At first start
 		angle_pitch = angle_pitch_acc;                                  // Set the gyro pitch angle equal to the accelerometer pitch angle

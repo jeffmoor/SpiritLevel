@@ -8,8 +8,11 @@
 // This sets the number of milliseconds per loop, and hence, the sample/refresh rate of the angle calculations
 #define		LOOP_TIME_MS								4000	// 4ms, or 250 Hz
 
-#define		GYRO_CAL_ITERATIONS							2000
+#define		GYRO_CAL_ITERATIONS							1000
 #define		GYRO_CAL_DOT_PERIOD							125
+
+#define		ACC_CAL_X									-2.1
+#define		ACC_CAL_Y									-1.2
 
 #define		I2C_ADDR_MPU6050_1							0x68
 #define		I2C_ADDR_MPU6050_2							0x69
