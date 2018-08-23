@@ -5,7 +5,7 @@
 
 
 //Declaring some global variables
-static boolean			set_gyro_angles;
+static boolean			gbSetGyroAngles;
 
 static int				lcd_loop_counter,
 						iMainLoopCount,
@@ -29,6 +29,9 @@ void setup() {
 
 	int				gyro_x, gyro_y, gyro_z, temperature;
 	long			acc_x, acc_y, acc_z;
+
+
+	gbSetGyroAngles = FALSE;
 
 	iMainLoopCount = 1;
 
@@ -118,6 +121,8 @@ void loop() {
 		Serial.print("X: ");Serial.println(gyro_x);
 		Serial.print("Y: ");Serial.println(gyro_y);
 		Serial.print("Z: ");Serial.println(gyro_z);
+		Serial.print("AP: ");Serial.println(acc_x);
+		Serial.print("AR: ");Serial.println(acc_y);
 		Serial.println();
 	}
 
@@ -134,19 +139,21 @@ void loop() {
 																			 // 57.296 = 1 / (3.142 / 180) The Arduino asin function is in radians
 	angle_pitch_acc = asin((float)acc_y / acc_total_vector) * 57.296;	// Calculate the pitch angle
 	angle_roll_acc = asin((float)acc_x / acc_total_vector) * -57.296;	// Calculate the roll angle
-
+	
+	//
 	// Place the MPU-6050 spirit level on a level surface and note the values in the following two lines for calibration
+	//
 	angle_pitch_acc -= 0.0;                                             // Accelerometer calibration value for pitch
 	angle_roll_acc -= 0.0;                                              // Accelerometer calibration value for roll
 
-	if (set_gyro_angles) {												// If the IMU is already started
+	if (gbSetGyroAngles) {												// If the IMU is already started
 		angle_pitch = angle_pitch * 0.9996 + angle_pitch_acc * 0.0004;  // Correct the drift of the gyro pitch angle with the accelerometer pitch angle
 		angle_roll = angle_roll * 0.9996 + angle_roll_acc * 0.0004;     // Correct the drift of the gyro roll angle with the accelerometer roll angle
 	}
 	else {                                                              // At first start
 		angle_pitch = angle_pitch_acc;                                  // Set the gyro pitch angle equal to the accelerometer pitch angle
 		angle_roll = angle_roll_acc;                                    // Set the gyro roll angle equal to the accelerometer roll angle
-		set_gyro_angles = true;                                         // Set the IMU started flag
+		gbSetGyroAngles = TRUE;                                         // Set the IMU started flag
 	}
 
 	// To dampen the pitch and roll angles a complementary filter is used
@@ -155,7 +162,7 @@ void loop() {
 
 	write_LCD();                                                         //Write the roll and pitch values to the LCD display
 
-	while (micros() - loop_timer < 4000);                                //Wait until the loop_timer reaches 4000us (250Hz) before starting the next loop
+	while (micros() - loop_timer < LOOP_TIME_MS);                                //Wait until the loop_timer reaches 4000us (250Hz) before starting the next loop
 	loop_timer = micros();                                               //Reset the loop timer
 }
 
@@ -165,10 +172,11 @@ void loop() {
 ////////////////////////////////////////////////////////////
 void read_mpu_6050_data(int &gy_x, int &gy_y, int &gy_z, int &temp, long &ac_x, long &ac_y, long &ac_z)
 {
-	Wire.beginTransmission(0x68);
-	Wire.write(0x3B);
+	// Request 14 bytes from the MPU-6050, starting at the accelerometer x-axis high byte
+	Wire.beginTransmission(I2C_ADDR_MPU6050_1);
+	Wire.write(MPU6050_REG_ACCEL_XOUT_H);
 	Wire.endTransmission();
-	Wire.requestFrom(0x68, 14);							// Request 14 bytes from the MPU-6050
+	Wire.requestFrom(I2C_ADDR_MPU6050_1, 14);
 
 	while (Wire.available() < 14);						// Wait until all the bytes are received
 
@@ -279,20 +287,20 @@ void write_LCD()
 void InitMPU6050() {
 	
 	// Wake it up
-	Wire.beginTransmission(0x68);
-	Wire.write(0x6B);
+	Wire.beginTransmission(I2C_ADDR_MPU6050_1);
+	Wire.write(MPU6050_REG_PWR_MGMT_1);
 	Wire.write(0x00);
 	Wire.endTransmission();
 	
 	// Configure the accelerometer (+/-8g)
-	Wire.beginTransmission(0x68);
-	Wire.write(0x1C);
-	Wire.write(0x10);
+	Wire.beginTransmission(I2C_ADDR_MPU6050_1);
+	Wire.write(MPU6050_REG_ACCEL_CONFIG);
+	Wire.write(MPU6050_REG_ACCEL_CONFIG_8G_FULL_SCALE);
 	Wire.endTransmission();
 	
 	// Configure the gyro (500dps full scale)
-	Wire.beginTransmission(0x68);
-	Wire.write(0x1B);
+	Wire.beginTransmission(I2C_ADDR_MPU6050_1);
+	Wire.write(MPU6050_REG_GYRO_CONFIG);
 	Wire.write(0x08);
 	Wire.endTransmission();
 }
